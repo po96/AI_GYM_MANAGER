@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI Fitness Coach - Close Quarters</title>
+    <title>AI Fitness Coach - Timer Edition</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
     <style>
-        /* EXTRA LARGE TEXT for distance viewing */
+        /* Huge Counter */
         #rep-counter {
-            font-size: 5rem !important; /* Huge text */
-            top: 20px;
+            font-size: 5rem !important; 
+            top: 60px; /* Moved down slightly to fit timer */
             left: 50%;
             transform: translateX(-50%);
             width: 100%;
@@ -18,8 +18,23 @@
             background: transparent;
             text-shadow: 2px 2px 4px #000;
         }
-        #debug-angle {
+        
+        /* New Timer Style */
+        #timer-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
             font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 15px;
+            border-radius: 20px;
+            z-index: 20;
+        }
+
+        #debug-angle {
+            font-size: 1.2rem;
             background: rgba(0,0,0,0.5);
         }
     </style>
@@ -28,7 +43,7 @@
 
     <h1>
         <select id="exercise-select" onchange="resetCounter()">
-            <option value="squat">🏋️ Squat (Thigh Only)</option>
+            <option value="squat">🏋️ Squat</option>
             <option value="curl">💪 Bicep Curl</option>
         </select>
     </h1>
@@ -38,8 +53,12 @@
         <canvas id="output"></canvas>
         
         <div id="ui-layer">
+            <div id="timer-display">00:00</div>
+
             <div id="rep-counter" class="hud-stat">0</div>
-            <div id="debug-angle" class="hud-stat" style="top: 100px; right: 10px; color: yellow;">Stand Up</div>
+            
+            <div id="debug-angle" class="hud-stat" style="top: 150px; right: 10px; color: yellow;">Stand Up</div>
+            
             <div id="ai-feedback" class="hud-stat">Ready</div>
         </div>
     </div>
@@ -53,16 +72,24 @@
 
 <script>
     let detector, camera, ctx;
-    let repCount = 0;
+    let totalReps = 0;
+    let perfectReps = 0;
     
-    // NEW: State tracking for depth
-    let squatState = "standing"; // "standing", "descending", "ascending"
-    let maxDepthAngle = 0;       // Tracks how low you went in this specific rep
+    // Squat State
+    let squatState = "standing";
+    let maxDepthAngle = 0;
     
     let isAnalyzing = false;
     const synth = window.speechSynthesis;
 
+    // Timer Variables
+    let startTime;
+    let timerInterval;
+
     async function init() {
+        // Start Timer immediately
+        startTimer();
+
         const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
         detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
         
@@ -83,6 +110,20 @@
         }
     }
 
+    // --- TIMER LOGIC ---
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            // Format as 00:00
+            document.getElementById('timer-display').innerText = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+
     async function detectPose() {
         const poses = await detector.estimatePoses(camera);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -95,63 +136,51 @@
             if (exerciseType === 'squat') {
                 processSquatThighs(kp);
             } else {
-                processCurl(kp); // Keep curl logic simple for now
+                processCurl(kp);
             }
         }
         requestAnimationFrame(detectPose);
     }
 
-    // --- NEW "SMART" SQUAT LOGIC ---
     function processSquatThighs(kp) {
         const hip = kp[11];
         const knee = kp[13];
 
         if(hip.score > 0.3 && knee.score > 0.3) {
-            // 0 = Standing, 90 = Parallel to floor
             const currentAngle = calculateSegmentAngle(hip, knee);
-            
-            // Show live angle for debugging
             const debugEl = document.getElementById('debug-angle');
             debugEl.innerText = `Depth: ${Math.floor(currentAngle)}°`;
 
-            // 1. TRACK MAX DEPTH
-            // If we are bending knees (> 30 degrees), we are "exercising"
             if (currentAngle > 30) {
-                if (currentAngle > maxDepthAngle) {
-                    maxDepthAngle = currentAngle; // Remember the lowest point
-                }
+                if (currentAngle > maxDepthAngle) maxDepthAngle = currentAngle;
             }
 
-            // 2. STATE MACHINE
-            
-            // PHASE A: Going Down
-            if (currentAngle > 30 && squatState === "standing") {
+            // Descending
+            if (currentAngle > 35 && squatState === "standing") {
                 squatState = "descending";
-                maxDepthAngle = currentAngle; // Reset max depth tracker
                 debugEl.style.color = "yellow";
             }
 
-            // PHASE B: Standing Back Up (The critical moment)
+            // Ascending (Finishing Rep)
             if (currentAngle < 20 && squatState === "descending") {
-                // You just finished a movement. Let's judge it.
                 
-                if (maxDepthAngle > 75) {
-                    // CASE 1: GOOD REP (Went deep enough)
-                    repCount++;
-                    updateCounter();
-                    debugEl.innerText = "✅ GOOD REP";
-                    debugEl.style.color = "#00ff88"; // Green
-                } else if (maxDepthAngle > 35) {
-                    // CASE 2: SHALLOW REP (Went down, but not enough)
-                    // Do NOT count the rep, but TRIGGER AI to explain why
-                    debugEl.innerText = "⚠️ TOO SHALLOW";
-                    debugEl.style.color = "red";
-                    
-                    // Force AI Check immediately because form was bad
+                // 1. ALWAYS Count the rep (Motivation!)
+                totalReps++; 
+                
+                // 2. CHECK QUALITY
+                // Changed from 75 to 60 for easier Perfect Score
+                if (maxDepthAngle > 60) {
+                    perfectReps++;
+                    debugEl.innerText = "✨ PERFECT!";
+                    debugEl.style.color = "#00ff88"; 
+                } else {
+                    debugEl.innerText = "⚠️ TRY DEEPER";
+                    debugEl.style.color = "orange";
+                    // Only trigger AI on bad reps to save API calls
                     checkFormWithAI(); 
                 }
 
-                // Reset for next rep
+                updateCounter();
                 squatState = "standing";
                 maxDepthAngle = 0;
             }
@@ -161,47 +190,21 @@
     function calculateSegmentAngle(a, b) {
         const dy = b.y - a.y; 
         const dx = b.x - a.x; 
-        // 0 = Vertical, 90 = Horizontal
         const radians = Math.atan2(Math.abs(dy), Math.abs(dx));
         const degrees = radians * (180/Math.PI);
         return 90 - degrees;
     }
 
-    // --- STANDARD APP LOGIC ---
     function updateCounter() {
-        document.getElementById('rep-counter').innerText = repCount;
-        // Also check "Good" reps every 5 times just in case
-        if(repCount % 5 === 0) checkFormWithAI();
+        document.getElementById('rep-counter').innerText = totalReps;
     }
 
-    // Keep your existing processCurl, checkFormWithAI, etc.
-    function processCurl(kp) {
-         // Shoulder(5), Elbow(7), Wrist(9)
-        const shoulder = kp[5];
-        const elbow = kp[7];
-        const wrist = kp[9];
-
-        if(shoulder.score > 0.3 && elbow.score > 0.3 && wrist.score > 0.3) {
-            const angle = calculateThreePointAngle(shoulder, elbow, wrist);
-            // Simple state machine for curl
-            if (angle > 160) {
-                 // Reset curl state if needed
-            }
-        }
-    }
-    
-    function calculateThreePointAngle(a, b, c) {
-        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-        let angle = Math.abs(radians * 180.0 / Math.PI);
-        if (angle > 180.0) angle = 360 - angle;
-        return angle;
-    }
-
+    // --- AI & API ---
     window.checkFormWithAI = async function() {
         if (isAnalyzing) return;
         isAnalyzing = true;
         const feedbackEl = document.getElementById('ai-feedback');
-        feedbackEl.innerText = "👀 Checking Form...";
+        feedbackEl.innerText = "👀 Checking...";
         
         const snapCanvas = document.getElementById('snapshot');
         snapCanvas.width = camera.videoWidth;
@@ -231,33 +234,57 @@
         const utterance = new SpeechSynthesisUtterance(text);
         synth.speak(utterance);
     }
-
+    
+    // Standard Curl Logic (unchanged)
+    function processCurl(kp) {
+        const shoulder = kp[5]; const elbow = kp[7]; const wrist = kp[9];
+        if(shoulder.score > 0.3 && elbow.score > 0.3 && wrist.score > 0.3) {
+            const angle = calculateThreePointAngle(shoulder, elbow, wrist);
+            if (angle > 160) squatState = "down"; 
+            if (angle < 60 && squatState === "down") {
+                squatState = "up";
+                totalReps++;
+                updateCounter();
+            }
+        }
+    }
+    function calculateThreePointAngle(a,b,c) {
+        const r = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let ang = Math.abs(r * 180.0 / Math.PI);
+        if (ang > 180.0) ang = 360 - ang;
+        return ang;
+    }
     function drawSkeleton(keypoints, ctx) {
         keypoints.forEach(p => {
             if(p.score > 0.3) {
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
-                ctx.fillStyle = 'red';
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+                ctx.fillStyle = 'red'; ctx.fill();
             }
         });
     }
-
     function resizeCanvas() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('output');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx = canvas.getContext('2d');
+        const v = document.getElementById('video');
+        const c = document.getElementById('output');
+        c.width = v.videoWidth; c.height = v.videoHeight;
+        ctx = c.getContext('2d');
     }
-    
     window.resetCounter = function() {
-        repCount = 0;
+        totalReps = 0; perfectReps = 0;
         document.getElementById('rep-counter').innerText = "0";
+        // Reset timer
+        clearInterval(timerInterval);
+        startTimer();
     }
 
+    // --- FINISH: Save Data ---
     window.finishWorkout = function() {
-        localStorage.setItem('totalReps', repCount);
+        localStorage.setItem('totalReps', totalReps);
+        localStorage.setItem('perfectReps', perfectReps);
+        
+        // Save Time
+        const timeText = document.getElementById('timer-display').innerText;
+        localStorage.setItem('workoutTime', timeText);
+        
         window.location.href = 'result.html';
     }
 
