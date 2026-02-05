@@ -75,7 +75,7 @@ video, canvas {
 #rep-counter { top: 50px; left: 20px; font-size: 1.5rem; }
 #ai-feedback { 
     /* Move up significantly to clear the buttons */
-    bottom: 250px; 
+    bottom: 400px; 
     
     /* Center it horizontally */
     left: 50%;
@@ -84,7 +84,7 @@ video, canvas {
     
     /* improved readability */
     text-align: center; 
-    font-size: 1.1rem; 
+    font-size: 1.8rem; 
     color: #fff;
     background: rgba(0, 0, 0, 0.75); /* Darker background for contrast */
     padding: 12px 20px;
