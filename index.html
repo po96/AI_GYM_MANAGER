@@ -47,7 +47,7 @@
 			
 			// 1. Ask for High Definition (1280x720)
 			const stream = await navigator.mediaDevices.getUserMedia({ 
-				video: { width: 1280, height: 720 } 
+				video: { width: 720, height: 1280 } 
 			});
 			camera.srcObject = stream;
 			
