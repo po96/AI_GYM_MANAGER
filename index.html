@@ -2,17 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI Fitness Coach - Debug Mode</title>
+    <title>AI Fitness Coach - Close Quarters</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+    <style>
+        /* EXTRA LARGE TEXT for distance viewing */
+        #rep-counter {
+            font-size: 5rem !important; /* Huge text */
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            text-align: center;
+            background: transparent;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #debug-angle {
+            font-size: 1.5rem;
+            background: rgba(0,0,0,0.5);
+        }
+    </style>
 </head>
 <body>
 
     <h1>
         <select id="exercise-select" onchange="resetCounter()">
-            <option value="squat">🏋️ Squat (Show full body)</option>
-            <option value="curl">💪 Bicep Curl (Upper body)</option>
+            <option value="squat">🏋️ Squat (Thigh Only)</option>
+            <option value="curl">💪 Bicep Curl</option>
         </select>
     </h1>
 
@@ -21,10 +38,9 @@
         <canvas id="output"></canvas>
         
         <div id="ui-layer">
-            <div id="debug-angle" class="hud-stat" style="top: 10px; right: 10px; color: yellow;">Angle: --°</div>
-            
-            <div id="rep-counter" class="hud-stat">0 Reps</div>
-            <div id="ai-feedback" class="hud-stat">Step back to show feet</div>
+            <div id="rep-counter" class="hud-stat">0</div>
+            <div id="debug-angle" class="hud-stat" style="top: 100px; right: 10px; color: yellow;">Stand Up</div>
+            <div id="ai-feedback" class="hud-stat">Ready</div>
         </div>
     </div>
 
@@ -59,7 +75,7 @@
             };
             window.addEventListener('resize', resizeCanvas);
         } catch (err) {
-            alert("Camera Error: " + err.message);
+            alert(err.message);
         }
     }
 
@@ -73,7 +89,7 @@
             
             const exerciseType = document.getElementById('exercise-select').value;
             if (exerciseType === 'squat') {
-                processSquat(kp);
+                processSquatThighs(kp);
             } else {
                 processCurl(kp);
             }
@@ -81,46 +97,44 @@
         requestAnimationFrame(detectPose);
     }
 
-    function processSquat(kp) {
-        // Hip(11), Knee(13), Ankle(15)
+    // --- NEW LOGIC: THIGH ANGLE (No Feet Needed) ---
+    function processSquatThighs(kp) {
+        // We only look at Hip (11) and Knee (13)
         const hip = kp[11];
         const knee = kp[13];
-        const ankle = kp[15];
 
-        // Check visibility
-        if(hip.score > 0.3 && knee.score > 0.3 && ankle.score > 0.3) {
-            const angle = calculateAngle(hip, knee, ankle);
+        if(hip.score > 0.3 && knee.score > 0.3) {
+            // Calculate angle of the Thigh Vector relative to Vertical
+            // 0 degrees = Standing straight
+            // 90 degrees = Thigh parallel to floor (Deep Squat)
+            const angle = calculateSegmentAngle(hip, knee);
             
-            // Show angle on screen for debugging
-            document.getElementById('debug-angle').innerText = `Angle: ${Math.floor(angle)}°`;
-            document.getElementById('debug-angle').style.color = "yellow";
+            document.getElementById('debug-angle').innerText = `Thigh: ${Math.floor(angle)}°`;
 
-            // Logic
-            if (angle < 100 && state === "up") { // Less strict (100 instead of 90)
+            // Logic:
+            // If thigh is > 75 degrees (horizontalish), it counts as DOWN
+            if (angle > 75 && state === "up") {
                 state = "down";
             }
-            if (angle > 160 && state === "down") {
+            // If thigh is < 30 degrees (verticalish), you are UP
+            if (angle < 30 && state === "down") {
                 state = "up";
                 repCount++;
                 updateCounter();
             }
         } else {
-            // Warn if feet are missing
-            document.getElementById('debug-angle').innerText = "⚠️ FEET NOT VISIBLE";
-            document.getElementById('debug-angle').style.color = "red";
+             document.getElementById('debug-angle').innerText = "⚠️ Show Hips/Knees";
         }
     }
 
     function processCurl(kp) {
-        // Shoulder(5), Elbow(7), Wrist(9)
+        // Standard Curl Logic
         const shoulder = kp[5];
         const elbow = kp[7];
         const wrist = kp[9];
 
         if(shoulder.score > 0.3 && elbow.score > 0.3 && wrist.score > 0.3) {
-            const angle = calculateAngle(shoulder, elbow, wrist);
-            document.getElementById('debug-angle').innerText = `Angle: ${Math.floor(angle)}°`;
-
+            const angle = calculateThreePointAngle(shoulder, elbow, wrist);
             if (angle > 160) state = "down";
             if (angle < 60 && state === "down") {
                 state = "up";
@@ -131,16 +145,54 @@
     }
 
     function updateCounter() {
-        document.getElementById('rep-counter').innerText = `${repCount} Reps`;
-        // Trigger AI at bottom of movement or every 5 reps
+        document.getElementById('rep-counter').innerText = repCount;
         if(repCount % 5 === 0) checkFormWithAI();
     }
 
+    // --- MATH HELPERS ---
+    
+    // Calculates angle of a limb segment relative to vertical axis
+    function calculateSegmentAngle(a, b) {
+        const dy = b.y - a.y; // Vertical distance
+        const dx = b.x - a.x; // Horizontal distance
+        // atan2 gives angle in radians. We convert to degrees.
+        // We care about absolute deviation from vertical (0).
+        let theta = Math.atan2(dy, dx) * (180 / Math.PI);
+        // Normalize: 90 is horizontal, 0 is vertical down (standing)
+        // Adjust based on coordinate system if needed, but usually:
+        // Standing: Knee is below Hip. dy is positive. dx is small. theta ~ 90.
+        // Actually: atan2(y, x). 
+        // If standing: y is large, x is 0. atan2(1, 0) = 90 deg.
+        // If squatting: y is 0, x is large. atan2(0, 1) = 0 deg.
+        
+        // Let's simplify: Just measure slope.
+        // If |dy| > |dx|, we are standing.
+        // If |dx| > |dy|, we are squatting.
+        
+        // Better Math:
+        // 0 = Vertical, 90 = Horizontal
+        const radians = Math.atan2(Math.abs(dy), Math.abs(dx));
+        const degrees = radians * (180/Math.PI);
+        // Standing: dy is big. degrees -> 90.
+        // Squatting: dy is small. degrees -> 0.
+        
+        // Return "Degrees from Vertical"
+        return 90 - degrees;
+    }
+
+    // Standard 3-point angle
+    function calculateThreePointAngle(a, b, c) {
+        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let angle = Math.abs(radians * 180.0 / Math.PI);
+        if (angle > 180.0) angle = 360 - angle;
+        return angle;
+    }
+
+    // --- REST OF THE APP (AI, Draw, etc) ---
     window.checkFormWithAI = async function() {
         if (isAnalyzing) return;
         isAnalyzing = true;
         const feedbackEl = document.getElementById('ai-feedback');
-        
         feedbackEl.innerText = "👀 Analyzing...";
         
         const snapCanvas = document.getElementById('snapshot');
@@ -156,13 +208,13 @@
                 body: JSON.stringify({ image: base64 })
             });
             const data = await response.json();
-            
             if (data.advice) {
                 feedbackEl.innerText = data.advice;
                 speak(data.advice);
             }
         } catch (err) {
             console.error(err);
+            feedbackEl.innerText = "Error";
         }
         isAnalyzing = false;
     }
@@ -171,13 +223,6 @@
         if (synth.speaking) synth.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         synth.speak(utterance);
-    }
-
-    function calculateAngle(a, b, c) {
-        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-        let angle = Math.abs(radians * 180.0 / Math.PI);
-        if (angle > 180.0) angle = 360 - angle;
-        return angle;
     }
 
     function drawSkeleton(keypoints, ctx) {
@@ -199,10 +244,9 @@
         ctx = canvas.getContext('2d');
     }
     
-    // UI Helpers
     window.resetCounter = function() {
         repCount = 0;
-        document.getElementById('rep-counter').innerText = "0 Reps";
+        document.getElementById('rep-counter').innerText = "0";
     }
 
     window.finishWorkout = function() {
