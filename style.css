@@ -67,11 +67,25 @@ video, canvas {
 
 #rep-counter { top: 50px; left: 20px; font-size: 1.5rem; }
 #ai-feedback { 
-    bottom: 100px; /* moved up to make room for buttons */
-    left: 20px; 
-    right: 20px; 
+    /* Move up significantly to clear the buttons */
+    bottom: 250px; 
+    
+    /* Center it horizontally */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%; /* Don't let it touch the edges */
+    
+    /* improved readability */
     text-align: center; 
-    font-size: 1rem; 
+    font-size: 1.1rem; 
+    color: #fff;
+    background: rgba(0, 0, 0, 0.75); /* Darker background for contrast */
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    
+    /* Animate it slightly when it appears (optional polish) */
+    transition: all 0.3s ease;
 }
 
 /* Controls fixed at the bottom */
