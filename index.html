@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AI Fitness Coach Pro</title>
+    <title>AI Fitness Coach - Debug Mode</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
@@ -11,8 +11,8 @@
 
     <h1>
         <select id="exercise-select" onchange="resetCounter()">
-            <option value="squat">🏋️ Squat</option>
-            <option value="curl">💪 Bicep Curl</option>
+            <option value="squat">🏋️ Squat (Show full body)</option>
+            <option value="curl">💪 Bicep Curl (Upper body)</option>
         </select>
     </h1>
 
@@ -21,8 +21,10 @@
         <canvas id="output"></canvas>
         
         <div id="ui-layer">
+            <div id="debug-angle" class="hud-stat" style="top: 10px; right: 10px; color: yellow;">Angle: --°</div>
+            
             <div id="rep-counter" class="hud-stat">0 Reps</div>
-            <div id="ai-feedback" class="hud-stat">Ready to train</div>
+            <div id="ai-feedback" class="hud-stat">Step back to show feet</div>
         </div>
     </div>
 
@@ -36,18 +38,14 @@
 <script>
     let detector, camera, ctx;
     let repCount = 0;
-    let state = "up"; // "up" or "down"
+    let state = "up"; 
     let isAnalyzing = false;
-    
-    // Voice Synthesis Setup
     const synth = window.speechSynthesis;
 
     async function init() {
-        // 1. Setup AI
         const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
         detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
         
-        // 2. Setup Camera (Mobile Optimized)
         camera = document.getElementById('video');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -55,15 +53,13 @@
                 video: { facingMode: 'user', frameRate: { ideal: 60 } }
             });
             camera.srcObject = stream;
-            
             camera.onloadedmetadata = () => {
                 resizeCanvas();
                 detectPose();
             };
             window.addEventListener('resize', resizeCanvas);
-            
         } catch (err) {
-            document.getElementById('ai-feedback').innerText = "Cam Error: " + err.message;
+            alert("Camera Error: " + err.message);
         }
     }
 
@@ -76,7 +72,6 @@
             drawSkeleton(kp, ctx);
             
             const exerciseType = document.getElementById('exercise-select').value;
-
             if (exerciseType === 'squat') {
                 processSquat(kp);
             } else {
@@ -86,53 +81,68 @@
         requestAnimationFrame(detectPose);
     }
 
-    // --- Exercise Logic: SQUAT ---
     function processSquat(kp) {
         // Hip(11), Knee(13), Ankle(15)
-        if(kp[11].score > 0.4 && kp[13].score > 0.4 && kp[15].score > 0.4) {
-            const angle = calculateAngle(kp[11], kp[13], kp[15]);
-            if (angle < 90 && state === "up") state = "down";
+        const hip = kp[11];
+        const knee = kp[13];
+        const ankle = kp[15];
+
+        // Check visibility
+        if(hip.score > 0.3 && knee.score > 0.3 && ankle.score > 0.3) {
+            const angle = calculateAngle(hip, knee, ankle);
+            
+            // Show angle on screen for debugging
+            document.getElementById('debug-angle').innerText = `Angle: ${Math.floor(angle)}°`;
+            document.getElementById('debug-angle').style.color = "yellow";
+
+            // Logic
+            if (angle < 100 && state === "up") { // Less strict (100 instead of 90)
+                state = "down";
+            }
             if (angle > 160 && state === "down") {
                 state = "up";
-                incrementRep();
+                repCount++;
+                updateCounter();
             }
+        } else {
+            // Warn if feet are missing
+            document.getElementById('debug-angle').innerText = "⚠️ FEET NOT VISIBLE";
+            document.getElementById('debug-angle').style.color = "red";
         }
     }
 
-    // --- Exercise Logic: CURL ---
     function processCurl(kp) {
         // Shoulder(5), Elbow(7), Wrist(9)
-        if(kp[5].score > 0.4 && kp[7].score > 0.4 && kp[9].score > 0.4) {
-            const angle = calculateAngle(kp[5], kp[7], kp[9]);
-            if (angle > 160) state = "down"; // Arm straight
-            if (angle < 50 && state === "down") { // Arm curled
+        const shoulder = kp[5];
+        const elbow = kp[7];
+        const wrist = kp[9];
+
+        if(shoulder.score > 0.3 && elbow.score > 0.3 && wrist.score > 0.3) {
+            const angle = calculateAngle(shoulder, elbow, wrist);
+            document.getElementById('debug-angle').innerText = `Angle: ${Math.floor(angle)}°`;
+
+            if (angle > 160) state = "down";
+            if (angle < 60 && state === "down") {
                 state = "up";
-                incrementRep();
+                repCount++;
+                updateCounter();
             }
         }
     }
 
-    function incrementRep() {
-        repCount++;
+    function updateCounter() {
         document.getElementById('rep-counter').innerText = `${repCount} Reps`;
-        if(repCount % 5 === 0) checkFormWithAI(); // Auto-check every 5
+        // Trigger AI at bottom of movement or every 5 reps
+        if(repCount % 5 === 0) checkFormWithAI();
     }
 
-    function resetCounter() {
-        repCount = 0;
-        document.getElementById('rep-counter').innerText = "0 Reps";
-        state = "up";
-    }
-
-    // --- UPDATED: AI Check with DEBUGGING ---
     window.checkFormWithAI = async function() {
         if (isAnalyzing) return;
         isAnalyzing = true;
-
         const feedbackEl = document.getElementById('ai-feedback');
-        feedbackEl.innerText = "🤖 Analyzing...";
-        feedbackEl.style.color = "#FFD700";
-
+        
+        feedbackEl.innerText = "👀 Analyzing...";
+        
         const snapCanvas = document.getElementById('snapshot');
         snapCanvas.width = camera.videoWidth;
         snapCanvas.height = camera.videoHeight;
@@ -145,51 +155,24 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: base64 })
             });
-
-            // 1. Capture Raw Text first (in case it's not JSON)
-            const rawText = await response.text();
-
-            // 2. Try to parse JSON
-            let data;
-            try {
-                data = JSON.parse(rawText);
-            } catch (e) {
-                // If parsing fails, the server sent an HTML error (like 404 or 504)
-                throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
+            const data = await response.json();
+            
+            if (data.advice) {
+                feedbackEl.innerText = data.advice;
+                speak(data.advice);
             }
-
-            // 3. Handle API Errors
-            if (!response.ok || data.error) {
-                const errorMsg = data.error || rawText;
-                throw new Error(errorMsg);
-            }
-
-            // 4. Success!
-            const advice = data.advice;
-            feedbackEl.innerText = `💡 ${advice}`;
-            feedbackEl.style.color = "#00ff88";
-            speak(advice);
-
         } catch (err) {
-            // DEBUG MODE: Show the specific error on screen
             console.error(err);
-            feedbackEl.innerText = `❌ Error: ${err.message}`;
-            feedbackEl.style.color = "red";
-            speak("Connection error. Check screen.");
         }
-
         isAnalyzing = false;
     }
 
-    // --- Voice Feedback Helper ---
     function speak(text) {
-        if (synth.speaking) synth.cancel(); // Stop previous speech
+        if (synth.speaking) synth.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.0;
         synth.speak(utterance);
     }
 
-    // --- Helpers ---
     function calculateAngle(a, b, c) {
         const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
         let angle = Math.abs(radians * 180.0 / Math.PI);
@@ -199,7 +182,7 @@
 
     function drawSkeleton(keypoints, ctx) {
         keypoints.forEach(p => {
-            if(p.score > 0.4) {
+            if(p.score > 0.3) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
                 ctx.fillStyle = 'red';
@@ -214,6 +197,12 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx = canvas.getContext('2d');
+    }
+    
+    // UI Helpers
+    window.resetCounter = function() {
+        repCount = 0;
+        document.getElementById('rep-counter').innerText = "0 Reps";
     }
 
     window.finishWorkout = function() {
