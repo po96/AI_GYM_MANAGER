@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hybrid AI Squat Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+</head>
+<body>
+
+    <h1>🏋️ Hybrid AI Squat Tracker</h1>
+
+    <div class="container">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="output"></canvas>
+        
+        <div id="ui-layer">
+            <div id="rep-counter" class="hud-stat">Reps: 0</div>
+            <div id="ai-feedback" class="hud-stat">Waiting for exercise...</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="checkFormWithAI()">🔍 Check My Form (AI)</button>
+        <button class="danger" onclick="finishWorkout()">🏁 Finish Workout</button>
+    </div>
+
+    <canvas id="snapshot" style="display:none;"></canvas>
+
+<script>
+    // --- Global Variables ---
+    let detector;
+    let camera;
+    let ctx;
+    let repCount = 0;
+    let state = "up"; // Tracks if you are standing ("up") or squatting ("down")
+    let isAnalyzing = false; // Locks the button so you can't click twice at once
+
+    // --- 1. Initialization (Startup) ---
+    async function init() {
+        // Load the MoveNet model (Fast & Light)
+        const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+        detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+        
+        // Setup Camera
+        camera = document.getElementById('video');
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            camera.srcObject = stream;
+            
+            // Wait for video to load data before setting up canvas
+            camera.onloadedmetadata = () => {
+                camera.width = 640;
+                camera.height = 480;
+                
+                // Match the drawing canvas to the video size
+                const outputCanvas = document.getElementById('output');
+                outputCanvas.width = 640;
+                outputCanvas.height = 480;
+                ctx = outputCanvas.getContext('2d');
+                
+                // Start the loop
+                detectPose();
+            };
+        } catch (err) {
+            alert("Camera access denied or error: " + err.message);
+        }
+    }
+
+    // --- 2. The Fast Loop (TensorFlow) ---
+    async function detectPose() {
+        // A. Find Poses
+        const poses = await detector.estimatePoses(camera);
+        
+        // B. Clear previous frame drawings
+        ctx.clearRect(0, 0, 640, 480);
+
+        // C. Analyze Pose
+        if (poses.length > 0) {
+            const kp = poses[0].keypoints;
+            
+            // Draw red dots on joints
+            drawSkeleton(kp, ctx);
+
+            // KEYPOINT IDs for Squat (Left Side): Hip(11), Knee(13), Ankle(15)
+            // Ensure confidence score is high (> 0.5) so we don't count glitches
+            if(kp[11].score > 0.5 && kp[13].score > 0.5 && kp[15].score > 0.5) {
+                
+                const angle = calculateAngle(kp[11], kp[13], kp[15]);
+                
+                // --- Rep Counting Logic ---
+                // If angle < 90 degrees, you are DOWN
+                if (angle < 90 && state === "up") {
+                    state = "down";
+                } 
+                // If angle > 160 degrees, you are back UP (Rep finished)
+                else if (angle > 160 && state === "down") {
+                    state = "up";
+                    repCount++;
+                    document.getElementById('rep-counter').innerText = `Reps: ${repCount}`;
+                    
+                    // OPTIONAL: Auto-check form every 5 reps
+                    if(repCount % 5 === 0) {
+                        checkFormWithAI();
+                    }
+                }
+            }
+        }
+
+        // Loop forever
+        requestAnimationFrame(detectPose);
+    }
+
+    // --- 3. The Smart Logic (Talks to Vercel Backend) ---
+    window.checkFormWithAI = async function() {
+        if (isAnalyzing) return; // Stop if already loading
+        isAnalyzing = true;
+
+        const feedbackEl = document.getElementById('ai-feedback');
+        feedbackEl.innerText = "🤖 AI is Analyzing...";
+        feedbackEl.style.color = "#FFD700"; // Gold
+
+        // Capture the current frame from video to a hidden canvas
+        const snapCanvas = document.getElementById('snapshot');
+        snapCanvas.width = camera.videoWidth;
+        snapCanvas.height = camera.videoHeight;
+        snapCanvas.getContext('2d').drawImage(camera, 0, 0);
+        
+        // Convert image to Base64 text
+        const base64 = snapCanvas.toDataURL('image/jpeg', 0.5); // 0.5 Quality
+
+        try {
+            // Send to YOUR Vercel API
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64 })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                feedbackEl.innerText = "Error: " + data.error;
+                feedbackEl.style.color = "red";
+            } else {
+                feedbackEl.innerText = `💡 Coach: ${data.advice}`;
+                feedbackEl.style.color = "#00ff88"; // Green
+            }
+        } catch (err) {
+            console.error(err);
+            feedbackEl.innerText = "Connection Error";
+        }
+
+        isAnalyzing = false;
+    }
+
+    // --- 4. Helper Functions ---
+    window.finishWorkout = function() {
+        localStorage.setItem('totalReps', repCount);
+        window.location.href = 'result.html';
+    }
+
+    // Geometry Math
+    function calculateAngle(a, b, c) {
+        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let angle = Math.abs(radians * 180.0 / Math.PI);
+        if (angle > 180.0) angle = 360 - angle;
+        return angle;
+    }
+
+    // Drawing Utils
+    function drawSkeleton(keypoints, ctx) {
+        keypoints.forEach(p => {
+            if(p.score > 0.5) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+            }
+        });
+    }
+
+    // Start App
+    init();
+</script>
+</body>
+</html>
