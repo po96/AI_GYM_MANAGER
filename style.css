@@ -1,27 +1,37 @@
 /* style.css */
 body {
-    font-family: 'Segoe UI', sans-serif;
-    background-color: #121212;
-    color: white;
     margin: 0;
+    padding: 0;
+    background-color: #000; /* Black bars if screen doesn't match exactly */
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden; /* Stop scrolling */
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
 }
 
-h1, h2 { margin: 10px 0; }
+h1 {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 10;
+    font-size: 1.2rem;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    pointer-events: none;
+}
 
+/* Make the video container fill the available space */
 .container {
     position: relative;
-    /* This makes it responsive: fits width but stops at 1280px */
-    width: 100%; 
-    max-width: 720px; 
-    margin: 0 auto; /* Centers it */
-    aspect-ratio: 16 / 9; /* Enforces widescreen shape */
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
+    width: 100%;
+    height: 100%; /* Fill screen height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 video, canvas {
@@ -30,60 +40,60 @@ video, canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Ensures no black bars */
+    object-fit: cover; /* Zooms to cover screen (no black bars) */
     transform: scaleX(-1); /* Mirror */
 }
 
-video { z-index: 1; }
-canvas { z-index: 2; }
-
+/* UI Overlay stays on top */
 #ui-layer {
-    position: relative;
-    z-index: 3;
-    width: 640px;
-    height: 480px;
-    pointer-events: none; /* Let clicks pass through to video if needed */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    pointer-events: none;
 }
 
 .hud-stat {
     position: absolute;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 24px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px 16px;
+    border-radius: 20px;
     font-weight: bold;
     color: #00ff88;
+    backdrop-filter: blur(4px);
 }
 
-#rep-counter { top: 10px; left: 10px; }
+#rep-counter { top: 50px; left: 20px; font-size: 1.5rem; }
 #ai-feedback { 
-    bottom: 20px; 
-    left: 10px; 
-    right: 10px; 
+    bottom: 100px; /* moved up to make room for buttons */
+    left: 20px; 
+    right: 20px; 
     text-align: center; 
-    font-size: 18px; 
-    color: #fff;
-    min-height: 40px;
+    font-size: 1rem; 
 }
 
+/* Controls fixed at the bottom */
 .controls {
-    margin-top: 500px; /* Push below video */
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
     display: flex;
-    gap: 10px;
-    z-index: 4;
+    justify-content: center;
+    gap: 15px;
+    z-index: 20;
 }
 
 button {
-    padding: 12px 24px;
-    font-size: 16px;
-    cursor: pointer;
+    padding: 15px 30px; /* Larger touch targets for thumbs */
+    font-size: 1rem;
+    border: none;
+    border-radius: 50px;
     background: #007bff;
     color: white;
-    border: none;
-    border-radius: 6px;
-    transition: background 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    font-weight: 600;
 }
 
-button:hover { background: #0056b3; }
-button.secondary { background: #6c757d; }
-button.danger { background: #dc3545; }
+button.danger { background: #ff4757; }

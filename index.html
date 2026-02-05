@@ -39,38 +39,58 @@
     let isAnalyzing = false; // Locks the button so you can't click twice at once
 
     // --- 1. Initialization (Startup) ---
-	async function init() {
-			const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
-			detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
-			
-			camera = document.getElementById('video');
-			
-			// 1. Ask for High Definition (1280x720)
-			const stream = await navigator.mediaDevices.getUserMedia({ 
-				video: { width: 720, height: 1280 } 
-			});
-			camera.srcObject = stream;
-			
-			camera.onloadedmetadata = () => {
-				// 2. IMPORTANT: Set internal resolution to match the actual camera stream
-				// This prevents the "small area" issue.
-				camera.width = camera.videoWidth;
-				camera.height = camera.videoHeight;
-				
-				const outputCanvas = document.getElementById('output');
-				outputCanvas.width = camera.videoWidth;
-				outputCanvas.height = camera.videoHeight;
-				
-				ctx = outputCanvas.getContext('2d');
+async function init() {
+        // 1. Load Model
+        const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+        detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+        
+        camera = document.getElementById('video');
+        
+        // 2. SMART CAMERA CONFIG
+        // We do NOT ask for a specific resolution. We ask for the "user" (front) camera.
+        // This allows the phone to give us a vertical stream (e.g. 720x1280) naturally.
+        const constraints = {
+            audio: false,
+            video: {
+                facingMode: 'user', // Prefer front camera
+                // Optional: ask for 60fps if supported, but don't force it
+                frameRate: { ideal: 60 } 
+            }
+        };
 
-				// 3. Update the hidden snapshot canvas too
-				const snapCanvas = document.getElementById('snapshot');
-				snapCanvas.width = camera.videoWidth;
-				snapCanvas.height = camera.videoHeight;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            camera.srcObject = stream;
+            
+            // 3. Handle Resize / Orientation Changes
+            camera.onloadedmetadata = () => {
+                resizeCanvas(); 
+                detectPose();
+            };
 
-				detectPose();
-			};
-		}
+            // If user rotates phone, resize canvas to match
+            window.addEventListener('resize', resizeCanvas);
+
+        } catch (err) {
+            alert("Camera Error: " + err.message);
+        }
+    }
+
+    // Helper to keep canvas and video perfectly aligned
+    function resizeCanvas() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('output');
+        const snap = document.getElementById('snapshot');
+        
+        // Match the internal resolution of the video stream
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        snap.width = video.videoWidth;
+        snap.height = video.videoHeight;
+        
+        // Refresh context (sometimes needed on resize)
+        ctx = canvas.getContext('2d');
+    }
 
     // --- 2. The Fast Loop (TensorFlow) ---
     async function detectPose() {
