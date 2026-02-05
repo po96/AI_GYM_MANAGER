@@ -39,36 +39,38 @@
     let isAnalyzing = false; // Locks the button so you can't click twice at once
 
     // --- 1. Initialization (Startup) ---
-    async function init() {
-        // Load the MoveNet model (Fast & Light)
-        const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
-        detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
-        
-        // Setup Camera
-        camera = document.getElementById('video');
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            camera.srcObject = stream;
-            
-            // Wait for video to load data before setting up canvas
-            camera.onloadedmetadata = () => {
-                camera.width = 640;
-                camera.height = 900;
-                
-                // Match the drawing canvas to the video size
-                const outputCanvas = document.getElementById('output');
-                outputCanvas.width = 640;
-                outputCanvas.height = 900;
-                ctx = outputCanvas.getContext('2d');
-                
-                // Start the loop
-                detectPose();
-            };
-        } catch (err) {
-            alert("Camera access denied or error: " + err.message);
-        }
-    }
+	async function init() {
+			const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+			detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
+			
+			camera = document.getElementById('video');
+			
+			// 1. Ask for High Definition (1280x720)
+			const stream = await navigator.mediaDevices.getUserMedia({ 
+				video: { width: 1280, height: 720 } 
+			});
+			camera.srcObject = stream;
+			
+			camera.onloadedmetadata = () => {
+				// 2. IMPORTANT: Set internal resolution to match the actual camera stream
+				// This prevents the "small area" issue.
+				camera.width = camera.videoWidth;
+				camera.height = camera.videoHeight;
+				
+				const outputCanvas = document.getElementById('output');
+				outputCanvas.width = camera.videoWidth;
+				outputCanvas.height = camera.videoHeight;
+				
+				ctx = outputCanvas.getContext('2d');
+
+				// 3. Update the hidden snapshot canvas too
+				const snapCanvas = document.getElementById('snapshot');
+				snapCanvas.width = camera.videoWidth;
+				snapCanvas.height = camera.videoHeight;
+
+				detectPose();
+			};
+		}
 
     // --- 2. The Fast Loop (TensorFlow) ---
     async function detectPose() {
@@ -76,7 +78,7 @@
         const poses = await detector.estimatePoses(camera);
         
         // B. Clear previous frame drawings
-        ctx.clearRect(0, 0, 1200, 900);
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         // C. Analyze Pose
         if (poses.length > 0) {
