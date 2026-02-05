@@ -2,190 +2,194 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hybrid AI Squat Tracker</title>
+    <title>AI Fitness Coach Pro</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
 </head>
 <body>
 
-    <h1>🏋️ Hybrid AI Squat Tracker</h1>
+    <h1>
+        <select id="exercise-select" onchange="resetCounter()">
+            <option value="squat">🏋️ Squat</option>
+            <option value="curl">💪 Bicep Curl</option>
+        </select>
+    </h1>
 
     <div class="container">
         <video id="video" playsinline autoplay muted></video>
         <canvas id="output"></canvas>
         
         <div id="ui-layer">
-            <div id="rep-counter" class="hud-stat">Reps: 0</div>
-            <div id="ai-feedback" class="hud-stat">Waiting for exercise...</div>
+            <div id="rep-counter" class="hud-stat">0 Reps</div>
+            <div id="ai-feedback" class="hud-stat">Ready to train</div>
         </div>
     </div>
 
     <div class="controls">
-        <button onclick="checkFormWithAI()">🔍 Check My Form (AI)</button>
-        <button class="danger" onclick="finishWorkout()">🏁 Finish Workout</button>
+        <button onclick="checkFormWithAI()">🔍 Check Form</button>
+        <button class="danger" onclick="finishWorkout()">🏁 Finish</button>
     </div>
 
     <canvas id="snapshot" style="display:none;"></canvas>
 
 <script>
-    // --- Global Variables ---
-    let detector;
-    let camera;
-    let ctx;
+    let detector, camera, ctx;
     let repCount = 0;
-    let state = "up"; // Tracks if you are standing ("up") or squatting ("down")
-    let isAnalyzing = false; // Locks the button so you can't click twice at once
+    let state = "up"; // "up" or "down"
+    let isAnalyzing = false;
+    
+    // Voice Synthesis Setup
+    const synth = window.speechSynthesis;
 
-    // --- 1. Initialization (Startup) ---
-async function init() {
-        // 1. Load Model
+    async function init() {
+        // 1. Setup AI
         const detectorConfig = { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
         detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, detectorConfig);
         
+        // 2. Setup Camera (Mobile Optimized)
         camera = document.getElementById('video');
-        
-        // 2. SMART CAMERA CONFIG
-        // We do NOT ask for a specific resolution. We ask for the "user" (front) camera.
-        // This allows the phone to give us a vertical stream (e.g. 720x1280) naturally.
-        const constraints = {
-            audio: false,
-            video: {
-                facingMode: 'user', // Prefer front camera
-                // Optional: ask for 60fps if supported, but don't force it
-                frameRate: { ideal: 60 } 
-            }
-        };
-
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: { facingMode: 'user', frameRate: { ideal: 60 } }
+            });
             camera.srcObject = stream;
             
-            // 3. Handle Resize / Orientation Changes
             camera.onloadedmetadata = () => {
-                resizeCanvas(); 
+                resizeCanvas();
                 detectPose();
             };
-
-            // If user rotates phone, resize canvas to match
             window.addEventListener('resize', resizeCanvas);
-
+            
         } catch (err) {
-            alert("Camera Error: " + err.message);
+            document.getElementById('ai-feedback').innerText = "Cam Error: " + err.message;
         }
     }
 
-    // Helper to keep canvas and video perfectly aligned
-    function resizeCanvas() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('output');
-        const snap = document.getElementById('snapshot');
-        
-        // Match the internal resolution of the video stream
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        snap.width = video.videoWidth;
-        snap.height = video.videoHeight;
-        
-        // Refresh context (sometimes needed on resize)
-        ctx = canvas.getContext('2d');
-    }
-
-    // --- 2. The Fast Loop (TensorFlow) ---
     async function detectPose() {
-        // A. Find Poses
         const poses = await detector.estimatePoses(camera);
-        
-        // B. Clear previous frame drawings
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // C. Analyze Pose
         if (poses.length > 0) {
             const kp = poses[0].keypoints;
-            
-            // Draw red dots on joints
             drawSkeleton(kp, ctx);
+            
+            const exerciseType = document.getElementById('exercise-select').value;
 
-            // KEYPOINT IDs for Squat (Left Side): Hip(11), Knee(13), Ankle(15)
-            // Ensure confidence score is high (> 0.5) so we don't count glitches
-            if(kp[11].score > 0.5 && kp[13].score > 0.5 && kp[15].score > 0.5) {
-                
-                const angle = calculateAngle(kp[11], kp[13], kp[15]);
-                
-                // --- Rep Counting Logic ---
-                // If angle < 90 degrees, you are DOWN
-                if (angle < 90 && state === "up") {
-                    state = "down";
-                } 
-                // If angle > 160 degrees, you are back UP (Rep finished)
-                else if (angle > 160 && state === "down") {
-                    state = "up";
-                    repCount++;
-                    document.getElementById('rep-counter').innerText = `Reps: ${repCount}`;
-                    
-                    // OPTIONAL: Auto-check form every 5 reps
-                    if(repCount % 5 === 0) {
-                        checkFormWithAI();
-                    }
-                }
+            if (exerciseType === 'squat') {
+                processSquat(kp);
+            } else {
+                processCurl(kp);
             }
         }
-
-        // Loop forever
         requestAnimationFrame(detectPose);
     }
 
-    // --- 3. The Smart Logic (Talks to Vercel Backend) ---
+    // --- Exercise Logic: SQUAT ---
+    function processSquat(kp) {
+        // Hip(11), Knee(13), Ankle(15)
+        if(kp[11].score > 0.4 && kp[13].score > 0.4 && kp[15].score > 0.4) {
+            const angle = calculateAngle(kp[11], kp[13], kp[15]);
+            if (angle < 90 && state === "up") state = "down";
+            if (angle > 160 && state === "down") {
+                state = "up";
+                incrementRep();
+            }
+        }
+    }
+
+    // --- Exercise Logic: CURL ---
+    function processCurl(kp) {
+        // Shoulder(5), Elbow(7), Wrist(9)
+        if(kp[5].score > 0.4 && kp[7].score > 0.4 && kp[9].score > 0.4) {
+            const angle = calculateAngle(kp[5], kp[7], kp[9]);
+            if (angle > 160) state = "down"; // Arm straight
+            if (angle < 50 && state === "down") { // Arm curled
+                state = "up";
+                incrementRep();
+            }
+        }
+    }
+
+    function incrementRep() {
+        repCount++;
+        document.getElementById('rep-counter').innerText = `${repCount} Reps`;
+        if(repCount % 5 === 0) checkFormWithAI(); // Auto-check every 5
+    }
+
+    function resetCounter() {
+        repCount = 0;
+        document.getElementById('rep-counter').innerText = "0 Reps";
+        state = "up";
+    }
+
+    // --- UPDATED: AI Check with DEBUGGING ---
     window.checkFormWithAI = async function() {
-        if (isAnalyzing) return; // Stop if already loading
+        if (isAnalyzing) return;
         isAnalyzing = true;
 
         const feedbackEl = document.getElementById('ai-feedback');
-        feedbackEl.innerText = "🤖 AI is Analyzing...";
-        feedbackEl.style.color = "#FFD700"; // Gold
+        feedbackEl.innerText = "🤖 Analyzing...";
+        feedbackEl.style.color = "#FFD700";
 
-        // Capture the current frame from video to a hidden canvas
         const snapCanvas = document.getElementById('snapshot');
         snapCanvas.width = camera.videoWidth;
         snapCanvas.height = camera.videoHeight;
         snapCanvas.getContext('2d').drawImage(camera, 0, 0);
-        
-        // Convert image to Base64 text
-        const base64 = snapCanvas.toDataURL('image/jpeg', 0.5); // 0.5 Quality
+        const base64 = snapCanvas.toDataURL('image/jpeg', 0.5);
 
         try {
-            // Send to YOUR Vercel API
             const response = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: base64 })
             });
 
-            const data = await response.json();
+            // 1. Capture Raw Text first (in case it's not JSON)
+            const rawText = await response.text();
 
-            if (data.error) {
-                feedbackEl.innerText = "Error: " + data.error;
-                feedbackEl.style.color = "red";
-            } else {
-                feedbackEl.innerText = `💡 Coach: ${data.advice}`;
-                feedbackEl.style.color = "#00ff88"; // Green
+            // 2. Try to parse JSON
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (e) {
+                // If parsing fails, the server sent an HTML error (like 404 or 504)
+                throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
             }
+
+            // 3. Handle API Errors
+            if (!response.ok || data.error) {
+                const errorMsg = data.error || rawText;
+                throw new Error(errorMsg);
+            }
+
+            // 4. Success!
+            const advice = data.advice;
+            feedbackEl.innerText = `💡 ${advice}`;
+            feedbackEl.style.color = "#00ff88";
+            speak(advice);
+
         } catch (err) {
+            // DEBUG MODE: Show the specific error on screen
             console.error(err);
-            feedbackEl.innerText = "Connection Error";
+            feedbackEl.innerText = `❌ Error: ${err.message}`;
+            feedbackEl.style.color = "red";
+            speak("Connection error. Check screen.");
         }
 
         isAnalyzing = false;
     }
 
-    // --- 4. Helper Functions ---
-    window.finishWorkout = function() {
-        localStorage.setItem('totalReps', repCount);
-        window.location.href = 'result.html';
+    // --- Voice Feedback Helper ---
+    function speak(text) {
+        if (synth.speaking) synth.cancel(); // Stop previous speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        synth.speak(utterance);
     }
 
-    // Geometry Math
+    // --- Helpers ---
     function calculateAngle(a, b, c) {
         const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
         let angle = Math.abs(radians * 180.0 / Math.PI);
@@ -193,10 +197,9 @@ async function init() {
         return angle;
     }
 
-    // Drawing Utils
     function drawSkeleton(keypoints, ctx) {
         keypoints.forEach(p => {
-            if(p.score > 0.5) {
+            if(p.score > 0.4) {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
                 ctx.fillStyle = 'red';
@@ -205,7 +208,19 @@ async function init() {
         });
     }
 
-    // Start App
+    function resizeCanvas() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('output');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx = canvas.getContext('2d');
+    }
+
+    window.finishWorkout = function() {
+        localStorage.setItem('totalReps', repCount);
+        window.location.href = 'result.html';
+    }
+
     init();
 </script>
 </body>
