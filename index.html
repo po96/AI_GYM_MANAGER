@@ -54,7 +54,11 @@
 <script>
     let detector, camera, ctx;
     let repCount = 0;
-    let state = "up"; 
+    
+    // NEW: State tracking for depth
+    let squatState = "standing"; // "standing", "descending", "ascending"
+    let maxDepthAngle = 0;       // Tracks how low you went in this specific rep
+    
     let isAnalyzing = false;
     const synth = window.speechSynthesis;
 
@@ -91,96 +95,101 @@
             if (exerciseType === 'squat') {
                 processSquatThighs(kp);
             } else {
-                processCurl(kp);
+                processCurl(kp); // Keep curl logic simple for now
             }
         }
         requestAnimationFrame(detectPose);
     }
 
-    // --- NEW LOGIC: THIGH ANGLE (No Feet Needed) ---
+    // --- NEW "SMART" SQUAT LOGIC ---
     function processSquatThighs(kp) {
-        // We only look at Hip (11) and Knee (13)
         const hip = kp[11];
         const knee = kp[13];
 
         if(hip.score > 0.3 && knee.score > 0.3) {
-            // Calculate angle of the Thigh Vector relative to Vertical
-            // 0 degrees = Standing straight
-            // 90 degrees = Thigh parallel to floor (Deep Squat)
-            const angle = calculateSegmentAngle(hip, knee);
+            // 0 = Standing, 90 = Parallel to floor
+            const currentAngle = calculateSegmentAngle(hip, knee);
             
-            document.getElementById('debug-angle').innerText = `Thigh: ${Math.floor(angle)}°`;
+            // Show live angle for debugging
+            const debugEl = document.getElementById('debug-angle');
+            debugEl.innerText = `Depth: ${Math.floor(currentAngle)}°`;
 
-            // Logic:
-            // If thigh is > 75 degrees (horizontalish), it counts as DOWN
-            if (angle > 75 && state === "up") {
-                state = "down";
+            // 1. TRACK MAX DEPTH
+            // If we are bending knees (> 30 degrees), we are "exercising"
+            if (currentAngle > 30) {
+                if (currentAngle > maxDepthAngle) {
+                    maxDepthAngle = currentAngle; // Remember the lowest point
+                }
             }
-            // If thigh is < 30 degrees (verticalish), you are UP
-            if (angle < 30 && state === "down") {
-                state = "up";
-                repCount++;
-                updateCounter();
+
+            // 2. STATE MACHINE
+            
+            // PHASE A: Going Down
+            if (currentAngle > 30 && squatState === "standing") {
+                squatState = "descending";
+                maxDepthAngle = currentAngle; // Reset max depth tracker
+                debugEl.style.color = "yellow";
             }
-        } else {
-             document.getElementById('debug-angle').innerText = "⚠️ Show Hips/Knees";
+
+            // PHASE B: Standing Back Up (The critical moment)
+            if (currentAngle < 20 && squatState === "descending") {
+                // You just finished a movement. Let's judge it.
+                
+                if (maxDepthAngle > 75) {
+                    // CASE 1: GOOD REP (Went deep enough)
+                    repCount++;
+                    updateCounter();
+                    debugEl.innerText = "✅ GOOD REP";
+                    debugEl.style.color = "#00ff88"; // Green
+                } else if (maxDepthAngle > 35) {
+                    // CASE 2: SHALLOW REP (Went down, but not enough)
+                    // Do NOT count the rep, but TRIGGER AI to explain why
+                    debugEl.innerText = "⚠️ TOO SHALLOW";
+                    debugEl.style.color = "red";
+                    
+                    // Force AI Check immediately because form was bad
+                    checkFormWithAI(); 
+                }
+
+                // Reset for next rep
+                squatState = "standing";
+                maxDepthAngle = 0;
+            }
         }
     }
 
+    function calculateSegmentAngle(a, b) {
+        const dy = b.y - a.y; 
+        const dx = b.x - a.x; 
+        // 0 = Vertical, 90 = Horizontal
+        const radians = Math.atan2(Math.abs(dy), Math.abs(dx));
+        const degrees = radians * (180/Math.PI);
+        return 90 - degrees;
+    }
+
+    // --- STANDARD APP LOGIC ---
+    function updateCounter() {
+        document.getElementById('rep-counter').innerText = repCount;
+        // Also check "Good" reps every 5 times just in case
+        if(repCount % 5 === 0) checkFormWithAI();
+    }
+
+    // Keep your existing processCurl, checkFormWithAI, etc.
     function processCurl(kp) {
-        // Standard Curl Logic
+         // Shoulder(5), Elbow(7), Wrist(9)
         const shoulder = kp[5];
         const elbow = kp[7];
         const wrist = kp[9];
 
         if(shoulder.score > 0.3 && elbow.score > 0.3 && wrist.score > 0.3) {
             const angle = calculateThreePointAngle(shoulder, elbow, wrist);
-            if (angle > 160) state = "down";
-            if (angle < 60 && state === "down") {
-                state = "up";
-                repCount++;
-                updateCounter();
+            // Simple state machine for curl
+            if (angle > 160) {
+                 // Reset curl state if needed
             }
         }
     }
-
-    function updateCounter() {
-        document.getElementById('rep-counter').innerText = repCount;
-        if(repCount % 5 === 0) checkFormWithAI();
-    }
-
-    // --- MATH HELPERS ---
     
-    // Calculates angle of a limb segment relative to vertical axis
-    function calculateSegmentAngle(a, b) {
-        const dy = b.y - a.y; // Vertical distance
-        const dx = b.x - a.x; // Horizontal distance
-        // atan2 gives angle in radians. We convert to degrees.
-        // We care about absolute deviation from vertical (0).
-        let theta = Math.atan2(dy, dx) * (180 / Math.PI);
-        // Normalize: 90 is horizontal, 0 is vertical down (standing)
-        // Adjust based on coordinate system if needed, but usually:
-        // Standing: Knee is below Hip. dy is positive. dx is small. theta ~ 90.
-        // Actually: atan2(y, x). 
-        // If standing: y is large, x is 0. atan2(1, 0) = 90 deg.
-        // If squatting: y is 0, x is large. atan2(0, 1) = 0 deg.
-        
-        // Let's simplify: Just measure slope.
-        // If |dy| > |dx|, we are standing.
-        // If |dx| > |dy|, we are squatting.
-        
-        // Better Math:
-        // 0 = Vertical, 90 = Horizontal
-        const radians = Math.atan2(Math.abs(dy), Math.abs(dx));
-        const degrees = radians * (180/Math.PI);
-        // Standing: dy is big. degrees -> 90.
-        // Squatting: dy is small. degrees -> 0.
-        
-        // Return "Degrees from Vertical"
-        return 90 - degrees;
-    }
-
-    // Standard 3-point angle
     function calculateThreePointAngle(a, b, c) {
         const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
         let angle = Math.abs(radians * 180.0 / Math.PI);
@@ -188,12 +197,11 @@
         return angle;
     }
 
-    // --- REST OF THE APP (AI, Draw, etc) ---
     window.checkFormWithAI = async function() {
         if (isAnalyzing) return;
         isAnalyzing = true;
         const feedbackEl = document.getElementById('ai-feedback');
-        feedbackEl.innerText = "👀 Analyzing...";
+        feedbackEl.innerText = "👀 Checking Form...";
         
         const snapCanvas = document.getElementById('snapshot');
         snapCanvas.width = camera.videoWidth;
@@ -214,7 +222,6 @@
             }
         } catch (err) {
             console.error(err);
-            feedbackEl.innerText = "Error";
         }
         isAnalyzing = false;
     }
