@@ -16,7 +16,7 @@ h1, h2 { margin: 10px 0; }
     position: relative;
     /* This makes it responsive: fits width but stops at 1280px */
     width: 100%; 
-    max-width: 1280px; 
+    max-width: 720px; 
     margin: 0 auto; /* Centers it */
     aspect-ratio: 16 / 9; /* Enforces widescreen shape */
     background: #000;
