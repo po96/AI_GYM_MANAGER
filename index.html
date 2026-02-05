@@ -41,12 +41,21 @@
 </head>
 <body>
 
-    <h1>
-        <select id="exercise-select" onchange="resetCounter()">
-            <option value="squat">🏋️ Squat</option>
-            <option value="curl">💪 Bicep Curl</option>
-        </select>
-    </h1>
+	<h1>
+		<select id="exercise-select" onchange="updateInstruction()">
+			<option value="squat">🏋️ Squat</option>
+			<option value="curl">💪 Bicep Curl</option>
+		</select>
+	</h1>
+
+	<p id="instruction-text" style="
+		text-align: center; 
+		color: #aaa; 
+		margin-top: -10px; 
+		font-size: 1rem;
+		font-style: italic;">
+		ℹ️ Stand sideways to camera
+	</p>
 
     <div class="container">
         <video id="video" playsinline autoplay muted></video>
@@ -199,6 +208,18 @@
         document.getElementById('rep-counter').innerText = totalReps;
     }
 
+	function updateInstruction() {
+		resetCounter(); // Keep your existing reset
+		
+		const exercise = document.getElementById('exercise-select').value;
+		const textEl = document.getElementById('instruction-text');
+
+		if (exercise === 'squat') {
+			textEl.innerText = "ℹ️ Stand sideways for best tracking";
+		} else {
+			textEl.innerText = "ℹ️ Face the camera or stand sideways";
+		}
+	}
     // --- AI & API ---
     window.checkFormWithAI = async function() {
         if (isAnalyzing) return;
