@@ -53,13 +53,13 @@
             
             // Wait for video to load data before setting up canvas
             camera.onloadedmetadata = () => {
-                camera.width = 640;
-                camera.height = 480;
+                camera.width = 900;
+                camera.height = 640;
                 
                 // Match the drawing canvas to the video size
                 const outputCanvas = document.getElementById('output');
-                outputCanvas.width = 640;
-                outputCanvas.height = 480;
+                outputCanvas.width = 900;
+                outputCanvas.height = 640;
                 ctx = outputCanvas.getContext('2d');
                 
                 // Start the loop
@@ -76,7 +76,7 @@
         const poses = await detector.estimatePoses(camera);
         
         // B. Clear previous frame drawings
-        ctx.clearRect(0, 0, 640, 480);
+        ctx.clearRect(0, 0, 900, 640);
 
         // C. Analyze Pose
         if (poses.length > 0) {
