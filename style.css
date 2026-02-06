@@ -107,6 +107,7 @@ h1 {
 
 /* Debug Angle - Center Screen */
 #debug-angle {
+	top: 400px;
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
