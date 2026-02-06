@@ -78,6 +78,7 @@ video, canvas {
 /* Exercise Selector - Centered Top */
 h1 {
     position: absolute;
+	left : 10px;
     top: 15px;
     width: 100%;
     text-align: center;
@@ -99,7 +100,7 @@ h1 {
 /* Instructions - Below Dropdown */
 #instruction-text {
     position: absolute;
-    top: 300px; /* Pushed below the big Rep Counter */
+    top: 250px; /* Pushed below the big Rep Counter */
     width: 100%;
     text-align: center;
     font-size: 1.8rem;
