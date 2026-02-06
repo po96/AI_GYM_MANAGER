@@ -94,7 +94,27 @@ video, canvas {
     /* Animate it slightly when it appears (optional polish) */
     transition: all 0.3s ease;
 }
+/* 2. Make the "Stand sideways" instruction much larger */
+#instruction-text {
+    font-size: 1.8rem !important; /* Large and clear */
+    color: #ffd700 !important; /* Yellow stands out better than gray */
+    margin-bottom: 20px;
+}
 
+/* 3. Make the Dropdown (Squat/Bicep) larger */
+#exercise-select {
+    font-size: 1.5rem;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+/* 4. Make the "Stand Up / Depth" debug message huge */
+#debug-angle {
+    font-size: 2.5rem !important; 
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 15px;
+}
 /* Controls fixed at the bottom */
 .controls {
     position: absolute;
