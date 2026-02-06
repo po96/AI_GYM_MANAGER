@@ -87,7 +87,7 @@ h1 {
 }
 
 #exercise-select {
-	left: 20;
+	left: 10%;
     font-size: 1.8rem;
     padding: 8px 15px;
     border-radius: 10px;
@@ -99,7 +99,7 @@ h1 {
 /* Instructions - Below Dropdown */
 #instruction-text {
     position: absolute;
-    top: 400px; /* Pushed below the big Rep Counter */
+    top: 300px; /* Pushed below the big Rep Counter */
     width: 100%;
     text-align: center;
     font-size: 1.8rem;
@@ -129,7 +129,7 @@ h1 {
     transform: translateX(-50%);
     width: 85%;
     text-align: center; 
-    font-size: 1.8rem; 
+    font-size: 2.2rem; 
     color: #fff;
     background: rgba(0, 80, 255, 0.4); /* Blue-ish tint for AI */
     border: 1px solid var(--action-blue);
