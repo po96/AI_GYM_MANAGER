@@ -96,13 +96,14 @@ video, canvas {
 }
 /* 2. Make the "Stand sideways" instruction much larger */
 #instruction-text {
-    font-size: 1.8rem !important; /* Large and clear */
+    font-size: 2rem !important; /* Large and clear */
     color: #ffd700 !important; /* Yellow stands out better than gray */
     margin-bottom: 20px;
 }
 
 /* 3. Make the Dropdown (Squat/Bicep) larger */
 #exercise-select {
+	top: 200;
     font-size: 1.5rem;
     padding: 10px;
     border-radius: 10px;
