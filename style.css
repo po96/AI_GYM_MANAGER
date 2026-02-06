@@ -85,7 +85,7 @@ h1 {
 }
 
 #exercise-select {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     padding: 8px 15px;
     border-radius: 10px;
     background: #222;
@@ -99,7 +99,7 @@ h1 {
     top: 300px;
     width: 100%;
     text-align: center;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     color: var(--warning-yellow);
     font-weight: bold;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
@@ -108,7 +108,7 @@ h1 {
 /* Debug Angle - Center Screen */
 #debug-angle {
 	top: 400px;
-    top: 40%;
+
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 2.2rem;
@@ -124,7 +124,7 @@ h1 {
     transform: translateX(-50%);
     width: 85%;
     text-align: center; 
-    font-size: 1.4rem; 
+    font-size: 1.8rem; 
     color: #fff;
     background: rgba(0, 80, 255, 0.4); /* Blue-ish tint for AI */
     border: 1px solid var(--action-blue);
@@ -144,7 +144,7 @@ h1 {
 
 button {
     padding: 15px 35px;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     border: none;
     border-radius: 50px;
     background: #fff;
