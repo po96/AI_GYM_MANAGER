@@ -1,41 +1,33 @@
-/* style.css */
-html {
-    /* 18px or 20px makes the whole app significantly bigger */
-    font-size: 20px; 
+/* 1. Global Setup */
+:root {
+    --neon-green: #00ff88;
+    --action-blue: #007bff;
+    --warning-yellow: #ffd700;
+    --danger-red: #ff4757;
+    --bg-overlay: rgba(0, 0, 0, 0.7);
 }
 
-
+html {
+    font-size: 20px; 
+}
 
 body {
     margin: 0;
     padding: 0;
-    background-color: #000; /* Black bars if screen doesn't match exactly */
+    background-color: #000;
     color: white;
-    font-family: 'Segoe UI', sans-serif;
-    overflow: hidden; /* Stop scrolling */
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
     height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-h1 {
-    position: absolute;
-    top: 10px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    z-index: 10;
-    font-size: 1.8rem;
-    margin: 0;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    pointer-events: none;
-}
-
-/* Make the video container fill the available space */
+/* 2. Camera View */
 .container {
     position: relative;
     width: 100%;
-    height: 100%; /* Fill screen height */
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -47,11 +39,11 @@ video, canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Zooms to cover screen (no black bars) */
-    transform: scaleX(-1); /* Mirror */
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror mode */
 }
 
-/* UI Overlay stays on top */
+/* 3. UI Layers & HUD */
 #ui-layer {
     position: absolute;
     top: 0;
@@ -59,83 +51,130 @@ video, canvas {
     width: 100%;
     height: 100%;
     z-index: 5;
-    pointer-events: none;
+    pointer-events: none; /* Allows clicking buttons through this layer */
 }
 
 .hud-stat {
     position: absolute;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 10px 20px;
-    border-radius: 20px;
+    background: var(--bg-overlay);
+    padding: 12px 20px;
+    border-radius: 15px;
     font-weight: bold;
-    color: #00ff88;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
-#rep-counter { top: 50px; left: 20px; font-size: 1.8rem; }
+/* Massive Rep Counter Top Left */
+#rep-counter {
+    top: 60px;
+    left: 20px;
+    font-size: 4rem; /* Made significantly larger */
+    color: var(--neon-green);
+    text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+}
+
+/* Exercise Selector - Centered Top */
+h1 {
+    position: absolute;
+    top: 15px;
+    width: 100%;
+    text-align: center;
+    z-index: 25;
+    margin: 0;
+    pointer-events: auto; /* IMPORTANT: Allows clicking the dropdown */
+}
+
+#exercise-select {
+    font-size: 1.2rem;
+    padding: 8px 15px;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    border: 2px solid var(--action-blue);
+}
+
+/* Instructions - Below Dropdown */
+#instruction-text {
+    position: absolute;
+    top: 80px;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5rem;
+    color: var(--warning-yellow);
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Debug Angle - Center Screen */
+#debug-angle {
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.2rem;
+    color: var(--warning-yellow);
+    text-align: center;
+    min-width: 200px;
+}
+
+/* AI Feedback - Bottom Floating */
 #ai-feedback { 
-    /* Move up significantly to clear the buttons */
-    bottom: 500px; 
-    
-    /* Center it horizontally */
+    bottom: 140px; /* Above the buttons */
     left: 50%;
     transform: translateX(-50%);
-    width: 80%; /* Don't let it touch the edges */
-    
-    /* improved readability */
+    width: 85%;
     text-align: center; 
-    font-size: 1.8rem; 
+    font-size: 1.4rem; 
     color: #fff;
-    background: rgba(0, 0, 0, 0.75); /* Darker background for contrast */
-    padding: 12px 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    
-    /* Animate it slightly when it appears (optional polish) */
-    transition: all 0.3s ease;
-}
-/* 2. Make the "Stand sideways" instruction much larger */
-#instruction-text {
-    font-size: 1.8rem !important; /* Large and clear */
-    color: #ffd700 !important; /* Yellow stands out better than gray */
-    margin-bottom: 20px;
+    background: rgba(0, 80, 255, 0.4); /* Blue-ish tint for AI */
+    border: 1px solid var(--action-blue);
 }
 
-/* 3. Make the Dropdown (Squat/Bicep) larger */
-#exercise-select {
-	top: 200;
-    font-size: 1.5rem;
-    padding: 10px;
-    border-radius: 10px;
-}
-
-/* 4. Make the "Stand Up / Depth" debug message huge */
-#debug-angle {
-    font-size: 2.5rem !important; 
-    background: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 15px;
-}
-/* Controls fixed at the bottom */
+/* 4. Controls */
 .controls {
     position: absolute;
-    bottom: 30px;
+    bottom: 40px;
     width: 100%;
     display: flex;
     justify-content: center;
-    gap: 15px;
-    z-index: 20;
+    gap: 20px;
+    z-index: 30;
+    pointer-events: auto;
 }
 
 button {
-    padding: 15px 30px; /* Larger touch targets for thumbs */
-    font-size: 1.8rem;
+    padding: 15px 35px;
+    font-size: 1.2rem;
     border: none;
     border-radius: 50px;
-    background: #007bff;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    font-weight: 600;
+    background: #fff;
+    color: #000;
+    font-weight: bold;
+    transition: transform 0.1s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
 }
 
-button.danger { background: #ff4757; }
+button:active { transform: scale(0.95); }
+
+button.danger {
+    background: var(--danger-red);
+    color: white;
+}
+
+/* Depth Bar (Optional - matched to theme) */
+#depth-gauge-container {
+    position: absolute;
+    right: 20px;
+    top: 25%;
+    height: 50%;
+    width: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+#depth-bar {
+    background: var(--neon-green);
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+    transition: height 0.1s;
+}
