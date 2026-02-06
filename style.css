@@ -85,7 +85,7 @@ h1 {
 }
 
 #exercise-select {
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     padding: 8px 15px;
     border-radius: 10px;
     background: #222;
@@ -96,7 +96,7 @@ h1 {
 /* Instructions - Below Dropdown */
 #instruction-text {
     position: absolute;
-    top: 80px;
+    top: 300px;
     width: 100%;
     text-align: center;
     font-size: 1.5rem;
@@ -118,7 +118,7 @@ h1 {
 
 /* AI Feedback - Bottom Floating */
 #ai-feedback { 
-    bottom: 140px; /* Above the buttons */
+    bottom: 400px; /* Above the buttons */
     left: 50%;
     transform: translateX(-50%);
     width: 85%;
@@ -143,7 +143,7 @@ h1 {
 
 button {
     padding: 15px 35px;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     border: none;
     border-radius: 50px;
     background: #fff;
