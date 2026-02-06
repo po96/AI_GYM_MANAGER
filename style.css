@@ -66,11 +66,13 @@ video, canvas {
 
 /* Massive Rep Counter Top Left */
 #rep-counter {
-    top: 60px;
-    left: 20px;
-    font-size: 4rem; /* Made significantly larger */
+    top: 80px; /* Moved down slightly to clear the Notch/Dropdown */
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 5rem; /* Large enough to see from 2m away */
     color: var(--neon-green);
-    text-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+    background: transparent; /* No box needed for the main count */
 }
 
 /* Exercise Selector - Centered Top */
@@ -96,25 +98,27 @@ h1 {
 /* Instructions - Below Dropdown */
 #instruction-text {
     position: absolute;
-    top: 300px;
+    top: 200px; /* Pushed below the big Rep Counter */
     width: 100%;
     text-align: center;
     font-size: 1.8rem;
     color: var(--warning-yellow);
     font-weight: bold;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    text-transform: uppercase;
 }
 
 /* Debug Angle - Center Screen */
 #debug-angle {
-	top: 400px;
-
+    top: 55%; /* Moved down so it is near your waist in the video */
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 2.2rem;
     color: var(--warning-yellow);
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent box */
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;
-    min-width: 200px;
 }
 
 /* AI Feedback - Bottom Floating */
