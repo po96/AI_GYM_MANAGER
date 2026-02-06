@@ -111,16 +111,17 @@ h1 {
 
 /* Debug Angle - Center Screen */
 #debug-angle {
-    top: 20px; /* Moved down so it is near your waist in the video */
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2.2rem;
+    top: 20px;
+    right: 20px;
+    left: auto; /* Overrides previous centering */
+    transform: none; /* Removes the translate centering */
+    font-size: 1.2rem; /* Smaller since it's now in the corner */
     color: var(--warning-yellow);
-    background: rgba(0, 0, 0, 0.5); /* Semi-transparent box */
+    background: var(--bg-overlay);
     padding: 10px 20px;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    text-align: center;
+    width: auto;
 }
 
 /* AI Feedback - Bottom Floating */
