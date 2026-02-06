@@ -115,7 +115,7 @@ h1 {
     right: 20px;
     left: auto; /* Overrides previous centering */
     transform: none; /* Removes the translate centering */
-    font-size: 1.2rem; /* Smaller since it's now in the corner */
+    font-size: 1.4rem; /* Smaller since it's now in the corner */
     color: var(--warning-yellow);
     background: var(--bg-overlay);
     padding: 10px 20px;
@@ -131,7 +131,7 @@ h1 {
     transform: translateX(-50%);
     width: 85%;
     text-align: center; 
-    font-size: 2.2rem; 
+    font-size: 2.5rem; 
     color: #fff;
     background: rgba(0, 80, 255, 0.4); /* Blue-ish tint for AI */
     border: 1px solid var(--action-blue);
