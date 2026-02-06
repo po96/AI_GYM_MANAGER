@@ -1,141 +1,109 @@
-/* style.css */
-html {
-    /* 18px or 20px makes the whole app significantly bigger */
-    font-size: 26px; 
-}
+<style>
+    :root {
+        --primary-neon: #00ff88;  /* Success Green */
+        --warning-orange: #ff9f0a; /* Shallow Squat Orange */
+        --accent-blue: #007bff;   /* UI Blue */
+        --bg-dark: #121212;
+    }
 
+    body {
+        background-color: var(--bg-dark);
+        color: white;
+        font-family: 'Inter', -apple-system, sans-serif;
+        margin: 0;
+        overflow: hidden; /* Prevents scrolling during workout */
+    }
 
+    /* Video Container - Full Screen Feel */
+    .container {
+        position: relative;
+        width: 100vw;
+        height: 80vh; /* Leave room for controls at bottom */
+        background: #000;
+        border-bottom: 3px solid var(--accent-blue);
+    }
 
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #000; /* Black bars if screen doesn't match exactly */
-    color: white;
-    font-family: 'Segoe UI', sans-serif;
-    overflow: hidden; /* Stop scrolling */
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
+    video, canvas {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* Fills screen perfectly */
+        border-radius: 0 0 30px 30px;
+    }
 
-h1 {
-    position: absolute;
-    top: 10px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    z-index: 10;
-    font-size: 2rem;
-    margin: 0;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    pointer-events: none;
-}
+    /* Floating Timer - Top Right */
+    #timer-display {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(10px);
+        padding: 10px 20px;
+        border-radius: 50px;
+        border: 1px solid rgba(255,255,255,0.2);
+        font-weight: bold;
+        color: var(--primary-neon);
+    }
 
-/* Make the video container fill the available space */
-.container {
-    position: relative;
-    width: 100%;
-    height: 100%; /* Fill screen height */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+    /* Floating Rep Counter - Center Top */
+    #rep-counter {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 8rem !important;
+        font-weight: 900;
+        text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        color: white;
+    }
 
-video, canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Zooms to cover screen (no black bars) */
-    transform: scaleX(-1); /* Mirror */
-}
+    /* Directional Instructions - Below Counter */
+    #instruction-text {
+        position: absolute;
+        top: 180px;
+        width: 100%;
+        text-align: center;
+        font-size: 1.5rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--warning-orange);
+    }
 
-/* UI Overlay stays on top */
-#ui-layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 5;
-    pointer-events: none;
-}
+    /* Live Feedback (Advice from AI) - Bottom Overlay */
+    #ai-feedback {
+        position: absolute;
+        bottom: 40px;
+        left: 5%;
+        width: 90%;
+        background: rgba(0, 123, 255, 0.2);
+        backdrop-filter: blur(8px);
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid var(--accent-blue);
+        text-align: center;
+        font-size: 1.4rem;
+    }
 
-.hud-stat {
-    position: absolute;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-weight: bold;
-    color: #00ff88;
-    backdrop-filter: blur(4px);
-}
+    /* Bottom Control Bar */
+    .controls {
+        height: 20vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+    }
 
-#rep-counter { top: 50px; left: 20px; font-size: 2rem; }
-#ai-feedback { 
-    /* Move up significantly to clear the buttons */
-    bottom: 500px; 
-    
-    /* Center it horizontally */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%; /* Don't let it touch the edges */
-    
-    /* improved readability */
-    text-align: center; 
-    font-size: 2rem; 
-    color: #fff;
-    background: rgba(0, 0, 0, 0.75); /* Darker background for contrast */
-    padding: 12px 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    
-    /* Animate it slightly when it appears (optional polish) */
-    transition: all 0.3s ease;
-}
-/* 2. Make the "Stand sideways" instruction much larger */
-#instruction-text {
-    font-size: 2rem !important; /* Large and clear */
-    color: #ffd700 !important; /* Yellow stands out better than gray */
-    margin-bottom: 20px;
-}
+    button {
+        width: 80%;
+        padding: 18px;
+        border-radius: 15px;
+        border: none;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
 
-/* 3. Make the Dropdown (Squat/Bicep) larger */
-#exercise-select {
-	top: 200;
-    font-size: 1.5rem;
-    padding: 10px;
-    border-radius: 10px;
-}
-
-/* 4. Make the "Stand Up / Depth" debug message huge */
-#debug-angle {
-    font-size: 2.5rem !important; 
-    background: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 15px;
-}
-/* Controls fixed at the bottom */
-.controls {
-    position: absolute;
-    bottom: 30px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    z-index: 20;
-}
-
-button {
-    padding: 15px 30px; /* Larger touch targets for thumbs */
-    font-size: 2rem;
-    border: none;
-    border-radius: 50px;
-    background: #007bff;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    font-weight: 600;
-}
-
-button.danger { background: #ff4757; }
+    .danger { background: #ff3b30; color: white; }
+    button:not(.danger) { background: white; color: black; }
+</style>
