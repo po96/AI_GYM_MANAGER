@@ -78,17 +78,17 @@ video, canvas {
 /* Exercise Selector - Centered Top */
 h1 {
     position: absolute;
-	left : 10px;
-    top: 15px;
-    width: 100%;
-    text-align: center;
+    top: 20px;
+    left: 20px; /* Moves it to the left */
+    width: auto; /* Stop it from taking full width */
+    text-align: left;
     z-index: 25;
     margin: 0;
-    pointer-events: auto; /* IMPORTANT: Allows clicking the dropdown */
+    pointer-events: auto;
 }
 
 #exercise-select {
-	left: 10%;
+
     font-size: 1.8rem;
     padding: 8px 15px;
     border-radius: 10px;
