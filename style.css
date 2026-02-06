@@ -25,7 +25,7 @@ h1 {
     width: 100%;
     text-align: center;
     z-index: 10;
-    font-size: 2rem;
+    font-size: 1.8rem;
     margin: 0;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     pointer-events: none;
@@ -72,7 +72,7 @@ video, canvas {
     backdrop-filter: blur(4px);
 }
 
-#rep-counter { top: 50px; left: 20px; font-size: 2rem; }
+#rep-counter { top: 50px; left: 20px; font-size: 1.8rem; }
 #ai-feedback { 
     /* Move up significantly to clear the buttons */
     bottom: 500px; 
@@ -84,9 +84,9 @@ video, canvas {
     
     /* improved readability */
     text-align: center; 
-    font-size: 2rem; 
+    font-size: 1.8rem; 
     color: #fff;
-    background: #007bff; /* Darker background for contrast */
+    background: rgba(0, 0, 0, 0.75); /* Darker background for contrast */
     padding: 12px 20px;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -96,7 +96,7 @@ video, canvas {
 }
 /* 2. Make the "Stand sideways" instruction much larger */
 #instruction-text {
-    font-size: 2rem !important; /* Large and clear */
+    font-size: 1.8rem !important; /* Large and clear */
     color: #ffd700 !important; /* Yellow stands out better than gray */
     margin-bottom: 20px;
 }
@@ -129,7 +129,7 @@ video, canvas {
 
 button {
     padding: 15px 30px; /* Larger touch targets for thumbs */
-    font-size: 2rem;
+    font-size: 1.8rem;
     border: none;
     border-radius: 50px;
     background: #007bff;
