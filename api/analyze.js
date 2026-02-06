@@ -32,7 +32,7 @@ export default async function handler(req) {
                     {
                         role: "user",
                         content: [
-                            { type: "text", text: "Analyze fitness form. Give 1 short correction (max 15 words). If good, say 'Good form!'." },
+                            { type: "text", text: "You are a Professional Gym Trainner. Analyze fitness form. Give 1 short correction in Korean (max 15 words). If good, say '잘하고 있어요!'." },
                             { type: "image_url", image_url: { "url": image } }
                         ]
                     }
