@@ -87,6 +87,7 @@ h1 {
 }
 
 #exercise-select {
+	left: 0;
     font-size: 1.8rem;
     padding: 8px 15px;
     border-radius: 10px;
